@@ -6,6 +6,7 @@
 export interface PeriodoInterrupcao {
     dataInicio: Date;
     dataFim: Date;
+    motivo: string;
   }
 
 export interface ParametrosAuditoria {
@@ -16,11 +17,19 @@ export interface ParametrosAuditoria {
     periodosInterrupcao?: PeriodoInterrupcao[];
   }
   
+  export interface PeriodoInterrupcaoDescontado {
+    dataInicio: Date;
+    dataFim: Date;
+    motivo: string;
+    dias: number;
+  }
+
   export interface ResultadoAuditoria {
     totalDiasExcedentes: number;
     valorDevidoReal: number;
     valorCobradoPeloArmador: number;
     houveDiferenca: boolean;
+    periodosInterrupcaoDescontados: PeriodoInterrupcaoDescontado[];
   }
   
   /**
@@ -65,6 +74,7 @@ export interface ParametrosAuditoria {
 
   /**
    * Mescla dois períodos sobrepostos em um único período
+   * Combina os motivos quando há sobreposição
    */
   function mesclarPeriodos(periodo1: PeriodoInterrupcao, periodo2: PeriodoInterrupcao): PeriodoInterrupcao {
     const inicio1 = normalizarData(periodo1.dataInicio);
@@ -72,19 +82,25 @@ export interface ParametrosAuditoria {
     const inicio2 = normalizarData(periodo2.dataInicio);
     const fim2 = normalizarData(periodo2.dataFim);
     
+    // Combinar motivos quando diferentes
+    const motivos = [periodo1.motivo, periodo2.motivo].filter((m, i, arr) => m && arr.indexOf(m) === i);
+    const motivoCombinado = motivos.join(' / ');
+    
     return {
       dataInicio: inicio1 < inicio2 ? inicio1 : inicio2,
-      dataFim: fim1 > fim2 ? fim1 : fim2
+      dataFim: fim1 > fim2 ? fim1 : fim2,
+      motivo: motivoCombinado
     };
   }
 
   /**
    * Calcula o total de dias de interrupção considerando todos os períodos
    * Mescla períodos sobrepostos para evitar contar o mesmo dia duas vezes
+   * Retorna o total de dias e os períodos mesclados com seus motivos
    */
-  function calcularDiasInterrupcao(periodos: PeriodoInterrupcao[] = []): number {
+  function calcularDiasInterrupcao(periodos: PeriodoInterrupcao[] = []): { totalDias: number; periodosMesclados: PeriodoInterrupcao[] } {
     if (periodos.length === 0) {
-      return 0;
+      return { totalDias: 0, periodosMesclados: [] };
     }
 
     // Validações iniciais
@@ -97,7 +113,8 @@ export interface ParametrosAuditoria {
     // Criar cópias dos períodos e normalizar datas
     const periodosNormalizados: PeriodoInterrupcao[] = periodos.map(p => ({
       dataInicio: normalizarData(p.dataInicio),
-      dataFim: normalizarData(p.dataFim)
+      dataFim: normalizarData(p.dataFim),
+      motivo: p.motivo
     }));
 
     // Ordenar períodos por data de início
@@ -128,7 +145,7 @@ export interface ParametrosAuditoria {
       totalDias += calcularDiasTotais(periodo.dataInicio, periodo.dataFim);
     }
     
-    return totalDias;
+    return { totalDias, periodosMesclados };
   }
 
   /**
@@ -145,8 +162,8 @@ export interface ParametrosAuditoria {
     // 2. Cálculo de dias base
     const diasTotais = calcularDiasTotais(dataRetirada, dataDevolucao);
     
-    // 3. Calcular dias de interrupção
-    const diasInterrupcao = calcularDiasInterrupcao(periodosInterrupcao);
+    // 3. Calcular dias de interrupção e obter períodos mesclados
+    const { totalDias: diasInterrupcao, periodosMesclados } = calcularDiasInterrupcao(periodosInterrupcao);
     
     // 4. Lógica do Armador (Geralmente ignora restrições de devolução e interrupções)
     const diasExcedentesArmador = Math.max(0, diasTotais - diasFreeTime);
@@ -165,10 +182,19 @@ export interface ParametrosAuditoria {
     diasCobravels = Math.max(0, diasCobravels);
     const valorDevidoReal = diasCobravels * valorDiariaUSD;
 
+    // Preparar períodos descontados para exibição
+    const periodosInterrupcaoDescontados: PeriodoInterrupcaoDescontado[] = periodosMesclados.map(p => ({
+      dataInicio: p.dataInicio,
+      dataFim: p.dataFim,
+      motivo: p.motivo,
+      dias: calcularDiasTotais(p.dataInicio, p.dataFim)
+    }));
+
     return {
       totalDiasExcedentes: diasCobravels,
       valorDevidoReal: Number(valorDevidoReal.toFixed(2)),
       valorCobradoPeloArmador: Number(valorCobradoPeloArmador.toFixed(2)),
-      houveDiferenca: valorCobradoPeloArmador > valorDevidoReal
+      houveDiferenca: valorCobradoPeloArmador > valorDevidoReal,
+      periodosInterrupcaoDescontados
     };
   }

@@ -8,15 +8,24 @@ export default function Home() {
   const [dataDevolucao, setDataDevolucao] = useState('');
   const [diasFreeTime, setDiasFreeTime] = useState('');
   const [valorDiariaUSD, setValorDiariaUSD] = useState('');
-  const [periodosInterrupcao, setPeriodosInterrupcao] = useState<Array<{ dataInicio: string; dataFim: string }>>([]);
+  const [periodosInterrupcao, setPeriodosInterrupcao] = useState<Array<{ dataInicio: string; dataFim: string; motivo: string }>>([]);
   const [mostrarInterrupcao, setMostrarInterrupcao] = useState(false);
-  const [novaInterrupcao, setNovaInterrupcao] = useState({ dataInicio: '', dataFim: '' });
+  const [novaInterrupcao, setNovaInterrupcao] = useState({ dataInicio: '', dataFim: '', motivo: '' });
+
+  const opcoesMotivo = [
+    'Greve (Rec. Federal / Portuários)',
+    'Condições Climáticas (Chuva/Vento)',
+    'Paralisação de Terminal (Operacional)',
+    'Falta de Agendamento (Janela)',
+    'Porto Fechado (Ressaca/Neblina)',
+    'Outros (Especificar em nota)'
+  ];
   const [resultado, setResultado] = useState<ResultadoAuditoria | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const handleAdicionarInterrupcao = () => {
-    if (!novaInterrupcao.dataInicio || !novaInterrupcao.dataFim) {
-      setErro('Por favor, preencha ambas as datas da interrupção.');
+    if (!novaInterrupcao.motivo || !novaInterrupcao.dataInicio || !novaInterrupcao.dataFim) {
+      setErro('Por favor, preencha o motivo e ambas as datas da interrupção.');
       return;
     }
 
@@ -26,7 +35,7 @@ export default function Home() {
     }
 
     setPeriodosInterrupcao([...periodosInterrupcao, { ...novaInterrupcao }]);
-    setNovaInterrupcao({ dataInicio: '', dataFim: '' });
+    setNovaInterrupcao({ dataInicio: '', dataFim: '', motivo: '' });
     setMostrarInterrupcao(false);
     setErro(null);
   };
@@ -49,6 +58,7 @@ export default function Home() {
       const periodos: PeriodoInterrupcao[] = periodosInterrupcao.map(p => ({
         dataInicio: new Date(p.dataInicio),
         dataFim: new Date(p.dataFim),
+        motivo: p.motivo,
       }));
 
       const parametros: ParametrosAuditoria = {
@@ -158,36 +168,56 @@ export default function Home() {
 
               {mostrarInterrupcao && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-4">
                     <div>
-                      <label htmlFor="interrupcaoInicio" className="block text-sm font-medium text-slate-700 mb-2">
-                        Data Início da Interrupção
+                      <label htmlFor="interrupcaoMotivo" className="block text-sm font-medium text-slate-700 mb-2">
+                        Motivo da Interrupção
                       </label>
-                      <input
-                        type="date"
-                        id="interrupcaoInicio"
-                        value={novaInterrupcao.dataInicio}
-                        onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataInicio: e.target.value })}
-                        className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-                      />
+                      <select
+                        id="interrupcaoMotivo"
+                        value={novaInterrupcao.motivo}
+                        onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, motivo: e.target.value })}
+                        className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition bg-white"
+                      >
+                        <option value="">Selecione o motivo</option>
+                        {opcoesMotivo.map((opcao) => (
+                          <option key={opcao} value={opcao}>
+                            {opcao}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div>
-                      <label htmlFor="interrupcaoFim" className="block text-sm font-medium text-slate-700 mb-2">
-                        Data Fim da Interrupção
-                      </label>
-                      <input
-                        type="date"
-                        id="interrupcaoFim"
-                        value={novaInterrupcao.dataFim}
-                        onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataFim: e.target.value })}
-                        className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="interrupcaoInicio" className="block text-sm font-medium text-slate-700 mb-2">
+                          Data Início da Interrupção
+                        </label>
+                        <input
+                          type="date"
+                          id="interrupcaoInicio"
+                          value={novaInterrupcao.dataInicio}
+                          onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataInicio: e.target.value })}
+                          className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="interrupcaoFim" className="block text-sm font-medium text-slate-700 mb-2">
+                          Data Fim da Interrupção
+                        </label>
+                        <input
+                          type="date"
+                          id="interrupcaoFim"
+                          value={novaInterrupcao.dataFim}
+                          onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataFim: e.target.value })}
+                          className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                        />
+                      </div>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={handleAdicionarInterrupcao}
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 mt-4"
                   >
                     Confirmar Interrupção
                   </button>
@@ -201,15 +231,16 @@ export default function Home() {
                       key={index}
                       className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between"
                     >
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium text-slate-700">
+                      <div className="flex flex-col gap-1 flex-1">
+                        <span className="text-xs font-medium text-amber-600">{periodo.motivo}</span>
+                        <span className="text-sm text-slate-700">
                           {new Date(periodo.dataInicio).toLocaleDateString('pt-BR')} até {new Date(periodo.dataFim).toLocaleDateString('pt-BR')}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoverInterrupcao(index)}
-                        className="text-red-600 hover:text-red-700 font-medium text-sm"
+                        className="text-red-600 hover:text-red-700 font-medium text-sm ml-4"
                       >
                         Remover
                       </button>
@@ -250,7 +281,7 @@ export default function Home() {
 
             <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
               <h3 className="text-2xl font-bold text-slate-900 mb-6">Resultado da Auditoria</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="bg-slate-50 p-4 rounded-lg">
                   <p className="text-sm text-slate-600 mb-1">Total de Dias Excedentes</p>
                   <p className="text-2xl font-bold text-slate-900">{resultado.totalDiasExcedentes} dias</p>
@@ -270,7 +301,49 @@ export default function Home() {
                   </p>
                 </div>
               </div>
+
             </div>
+
+            {resultado.periodosInterrupcaoDescontados.length > 0 && (
+              <div className="bg-blue-50 rounded-xl shadow-lg p-6 sm:p-8">
+                <h3 className="text-xl font-bold text-slate-900 mb-6">Detalhamento da Defesa</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {resultado.periodosInterrupcaoDescontados.map((periodo, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                            Motivo
+                          </p>
+                          <p className="text-sm font-bold text-slate-900 leading-tight">
+                            {periodo.motivo}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                            Período
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            {periodo.dataInicio.toLocaleDateString('pt-BR')} até {periodo.dataFim.toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                        <div className="pt-2 border-t border-blue-100">
+                          <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">
+                            Total de Dias Abatidos
+                          </p>
+                          <p className="text-lg font-bold text-blue-700">
+                            {periodo.dias} {periodo.dias === 1 ? 'dia' : 'dias'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
