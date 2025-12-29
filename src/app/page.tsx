@@ -1,15 +1,39 @@
 'use client';
 
 import { useState } from 'react';
-import { auditarContainer, type ParametrosAuditoria, type ResultadoAuditoria } from '@/lib/engine';
+import { auditarContainer, type ParametrosAuditoria, type ResultadoAuditoria, type PeriodoInterrupcao } from '@/lib/engine';
 
 export default function Home() {
   const [dataRetirada, setDataRetirada] = useState('');
   const [dataDevolucao, setDataDevolucao] = useState('');
   const [diasFreeTime, setDiasFreeTime] = useState('');
   const [valorDiariaUSD, setValorDiariaUSD] = useState('');
+  const [periodosInterrupcao, setPeriodosInterrupcao] = useState<Array<{ dataInicio: string; dataFim: string }>>([]);
+  const [mostrarInterrupcao, setMostrarInterrupcao] = useState(false);
+  const [novaInterrupcao, setNovaInterrupcao] = useState({ dataInicio: '', dataFim: '' });
   const [resultado, setResultado] = useState<ResultadoAuditoria | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+
+  const handleAdicionarInterrupcao = () => {
+    if (!novaInterrupcao.dataInicio || !novaInterrupcao.dataFim) {
+      setErro('Por favor, preencha ambas as datas da interrupção.');
+      return;
+    }
+
+    if (new Date(novaInterrupcao.dataFim) < new Date(novaInterrupcao.dataInicio)) {
+      setErro('A data fim não pode ser anterior à data início.');
+      return;
+    }
+
+    setPeriodosInterrupcao([...periodosInterrupcao, { ...novaInterrupcao }]);
+    setNovaInterrupcao({ dataInicio: '', dataFim: '' });
+    setMostrarInterrupcao(false);
+    setErro(null);
+  };
+
+  const handleRemoverInterrupcao = (index: number) => {
+    setPeriodosInterrupcao(periodosInterrupcao.filter((_, i) => i !== index));
+  };
 
   const handleAuditar = () => {
     setErro(null);
@@ -22,11 +46,17 @@ export default function Home() {
     }
 
     try {
+      const periodos: PeriodoInterrupcao[] = periodosInterrupcao.map(p => ({
+        dataInicio: new Date(p.dataInicio),
+        dataFim: new Date(p.dataFim),
+      }));
+
       const parametros: ParametrosAuditoria = {
         dataRetirada: new Date(dataRetirada),
         dataDevolucao: new Date(dataDevolucao),
         diasFreeTime: Number(diasFreeTime),
         valorDiariaUSD: Number(valorDiariaUSD),
+        periodosInterrupcao: periodos.length > 0 ? periodos : undefined,
       };
 
       const resultadoAuditoria = auditarContainer(parametros);
@@ -106,6 +136,87 @@ export default function Home() {
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                 />
               </div>
+            </div>
+
+            {/* Períodos de Interrupção */}
+            <div className="border-t border-slate-200 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Períodos de Interrupção (Greve/Chuva)
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarInterrupcao(!mostrarInterrupcao);
+                    setErro(null);
+                  }}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm hover:shadow-md"
+                >
+                  {mostrarInterrupcao ? 'Cancelar' : '+ Adicionar Interrupção'}
+                </button>
+              </div>
+
+              {mostrarInterrupcao && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label htmlFor="interrupcaoInicio" className="block text-sm font-medium text-slate-700 mb-2">
+                        Data Início da Interrupção
+                      </label>
+                      <input
+                        type="date"
+                        id="interrupcaoInicio"
+                        value={novaInterrupcao.dataInicio}
+                        onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataInicio: e.target.value })}
+                        className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="interrupcaoFim" className="block text-sm font-medium text-slate-700 mb-2">
+                        Data Fim da Interrupção
+                      </label>
+                      <input
+                        type="date"
+                        id="interrupcaoFim"
+                        value={novaInterrupcao.dataFim}
+                        onChange={(e) => setNovaInterrupcao({ ...novaInterrupcao, dataFim: e.target.value })}
+                        className="w-full px-4 py-2 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAdicionarInterrupcao}
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+                  >
+                    Confirmar Interrupção
+                  </button>
+                </div>
+              )}
+
+              {periodosInterrupcao.length > 0 && (
+                <div className="space-y-2">
+                  {periodosInterrupcao.map((periodo, index) => (
+                    <div
+                      key={index}
+                      className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-medium text-slate-700">
+                          {new Date(periodo.dataInicio).toLocaleDateString('pt-BR')} até {new Date(periodo.dataFim).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverInterrupcao(index)}
+                        className="text-red-600 hover:text-red-700 font-medium text-sm"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
