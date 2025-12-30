@@ -13,3 +13,15 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, sans-serif;
 }
+@media print {
+  body * { visibility: hidden !important; }
+  #relatorio-container, #relatorio-container * { visibility: visible !important; }
+  #relatorio-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: block !important;
+  }
+  @page { size: portrait; margin: 0; }
+}

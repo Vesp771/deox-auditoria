@@ -1,0 +1,6 @@
+name: Local Config
+version: 1.0.0
+models:
+  - title: "Qwen Local"
+    provider: "ollama"
+    model: "qwen2.5-coder:7b"
